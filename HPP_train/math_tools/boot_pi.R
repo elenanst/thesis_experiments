@@ -1,49 +1,46 @@
-# This function computes bootstrap confidence intervals
+# This function computes bootstrap confidence intervals for trained machine learning models.
+
+# --- set up ---
 library(foreach)
 library(doParallel)
-boot_pi = function(model, pdata, n, p, enableLog = TRUE) { 
-  registerDoParallel(cores = 4)
-  params_list <- list()
-  params <- names(model$bestTune)
-  x<- params[1]
-  optParameters <- data.frame( param= 2)
-  if(length(params)>1) {
-    for(i in 2:length(params)) {
-      optParameters <- cbind(optParameters, data.frame( temp = model$bestTune[params[i]])) 
-    }
-  }
-  names(optParameters) <- params
-  odata <- model$trainingData
-  lp <- (1 - p) / 2
-  up <- 1 - lp
+
+# model    : machine learning model
+# pdata    : data for prediction
+# n        : bootstrap iterations
+# p        : confidence level
+# enableLog: apply log-transformation
+# cores    : number of cores 
+# return   : data.frame of predictions and intervals
+boot_pi = function(model, pdata, n, p, enableLog = TRUE, cores = 2) { 
+  optParameters <- model$bestTune
+  odata         <- model$trainingData
+  lp            <- (1 - p) / 2
+  up            <- 1 - lp
   set.seed(1)
   seeds <- round(runif(n, 1, 1000), 0)
+  registerDoParallel(cores = 4)
   boot_y <- foreach(i = 1:n, .combine = rbind) %dopar% {
     set.seed(seeds[i])
+    # choose bootstrap sample
     bdata <- odata[sample(seq(nrow(odata)), size = nrow(odata), replace = TRUE), ]
+    # perform bootstrap prediction
     if(enableLog) {
       model_current <- caret::train(log10(.outcome)~ ., data = bdata,
                                     method = model$method,
                                     tuneGrid = optParameters,
                                     trControl=trainControl(method="none"))
-      bpred <- predict(model_current, newdata = pdata)
-      bpred <-10^bpred
+      bpred         <- 10^predict(model_current, newdata = pdata)
     } else {
       model_current <- caret::train(.outcome~ ., data = bdata,
                                     method = model$method,
                                     tuneGrid = optParameters,
                                     trControl=trainControl(method="none"))
-      bpred <- predict(model_current, newdata = pdata)
-      bpred <-bpred
+      bpred         <- predict(model_current, newdata = pdata)
     }
-    bpred
   }
-  boot_ci <- t(apply(boot_y, 2, quantile, c(lp, up))) 
-  if(enableLog) { 
-    predicted <- 10^predict(model, newdata = pdata)
-  }
-  else {
-    predicted <- predict(model, newdata = pdata)
-  }
+  # calculate confidence intervals
+  boot_ci   <- t(apply(boot_y, 2, quantile, c(lp, up))) 
+  predicted <- predict(model, newdata = pdata)
+  if(enableLog) predicted <- 10^predicted
   return(data.frame(pred = predicted, lower = boot_ci[, 1] , upper = boot_ci[, 2] ))
 }
