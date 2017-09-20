@@ -1,12 +1,12 @@
 # This script generates training and testing metafeatures.
 
-##  set up 
+##  --- set up --- 
 rm(list=ls())
 setwd("automl")
 source("build_script.R")
 
-##  generate testing metafeatures 
-repo       <-"workspace/datasets_repo"
+##  --- generate testing metafeatures --- 
+repo       <-"../thesis_experiments/data/datasets/testing"
 files_list <- list.files(path = repo,  pattern="*.csv", recursive = TRUE)
 for(i in seq(1, length(files_list))) {
   dataset_path <- files_list[[i]]
@@ -37,7 +37,7 @@ rownames(total_metafeatures) <- files_list
 write.csv(total_metafeatures, "../thesis_experiments/readiness_metric/testing_metafeatures.csv")
 
 ## generate training metafeatures
-repo       <-"../thesis_experiments/data/datasets"
+repo       <-"../thesis_experiments/data/datasets/training"
 files_list <- list.files(path = repo,  pattern="*.csv", recursive = TRUE)
 for(i in seq(1, length(files_list))) {
   dataset_path <- files_list[[i]]
@@ -62,4 +62,4 @@ for(i in seq(1, length(files_list))) {
   } 
 }
 rownames(total_metafeatures) <- files_list
-write.csv(total_metafeatures, "../thesis_experiments/readiness_metric/training_metafeatures_unprocessed.csv")
+write.csv(total_metafeatures, "../thesis_experiments/readiness_metric/training_metafeatures.csv")
