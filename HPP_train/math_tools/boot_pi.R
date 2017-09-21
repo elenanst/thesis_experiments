@@ -18,7 +18,7 @@ boot_pi = function(model, pdata, n, p, enableLog = TRUE, cores = 2) {
   up            <- 1 - lp
   set.seed(1)
   seeds <- round(runif(n, 1, 1000), 0)
-  registerDoParallel(cores = 4)
+  registerDoParallel(cores = cores)
   boot_y <- foreach(i = 1:n, .combine = rbind) %dopar% {
     set.seed(seeds[i])
     # choose bootstrap sample
@@ -29,7 +29,7 @@ boot_pi = function(model, pdata, n, p, enableLog = TRUE, cores = 2) {
                                     method = model$method,
                                     tuneGrid = optParameters,
                                     trControl=trainControl(method="none"))
-      bpred         <- 10^predict(model_current, newdata = pdata)
+      bpred         <- 10^predict(model_current, pdata)
     } else {
       model_current <- caret::train(.outcome~ ., data = bdata,
                                     method = model$method,
@@ -41,6 +41,7 @@ boot_pi = function(model, pdata, n, p, enableLog = TRUE, cores = 2) {
   # calculate confidence intervals
   boot_ci   <- t(apply(boot_y, 2, quantile, c(lp, up))) 
   predicted <- predict(model, newdata = pdata)
+  str(predicted)
   if(enableLog) predicted <- 10^predicted
   return(data.frame(pred = predicted, lower = boot_ci[, 1] , upper = boot_ci[, 2] ))
 }
