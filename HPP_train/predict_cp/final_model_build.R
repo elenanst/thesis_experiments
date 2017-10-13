@@ -18,6 +18,14 @@ RMSE <- function(x,y) {
 }
 
 
+remove_outliers <- function(x, na.rm = TRUE, ...) {
+  qnt <- quantile(x, probs=c(.25, .75), na.rm = na.rm, ...)
+  H <-  10* IQR(x, na.rm = na.rm)
+  y <- x
+  y[x < (qnt[1] - H)] <- max(x)
+  y[x > (qnt[2] + H)] <- min(x)
+  y
+}
 
 # --- load data ---
 training_data                <- read.csv("HPP_train/training_metafeatures.csv",
@@ -47,6 +55,10 @@ test_class      <- test_class[names %in% test_files,]
 testing_data <- testing_data[test_files %in% names, ]
 test_class      <- test_class$cp
 # --- preprocess metafeatures ---
+# --- remove outliers ---
+for(i in 1:(ncol(training_data)-1)) {
+  training_data[,i] <- remove_outliers(training_data[,i])
+}
 # --- scale data ---
 x                                       <- scale(training_data)
 means         <- attr(x, "scaled:center")
@@ -57,7 +69,7 @@ inap_remover = new('InapRemover')
 training_data <- inap_remover$removeInfinites(training_data,
                                               inf_action = list( act= "replace", rep_pos = 1, rep_neg = 0))
 training_data <- inap_remover$removeUnknown(training_data)
-zero_columns  <- nearZeroVar(training_data)
+zero_columns  <- nearZeroVar(training_data,freqCut = 2.5, uniqueCut = 70, saveMetrics =F)
 training_data <- training_data[,- zero_columns]
 # filtering
 correlationMatrix <- cor(training_data[, !(names(training_data) %in% c("Class"))])
@@ -128,9 +140,9 @@ dev.off()
 save(list = ls(all.names = TRUE), file = "HPP_train/predict_cp/workspace.RData", envir = .GlobalEnv)
 
 # --- train and store model and parameters ---
-save(trained_model, file = "HPP_train/predict_C/model.RData")
+save(trained_model, file = "HPP_train/predict_cp/model.RData")
 model_p <- list(metafeatures = colnames(training_data), means = means, scales = scales,
                 n_boot = 50 , percentage  = 0.95, enableLog = 1, step = 0.5, count = 0)
-save(model_p, file="HPP_train/predict_C/model_parameters.Rdata")
+save(model_p, file="HPP_train/predict_cp/model_parameters.Rdata")
 
 
